@@ -9,7 +9,7 @@ const auto grammar = R"(
   START              <- _ ADDITIVE
   ADDITIVE           <- MULTITIVE (ADDITIVE_OPERATOR MULTITIVE)*
   MULTITIVE          <- PRIMARY (MULTITIVE_OPERATOR PRIMARY)*
-  PRIMARY            <- NUMBER
+  PRIMARY            <- NUMBER / '(' _ ADDITIVE ')' _
 
   # トークン
   ADDITIVE_OPERATOR  <- < [-+] > _
