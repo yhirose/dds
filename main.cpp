@@ -4,22 +4,31 @@ using namespace std;
 
 typedef shared_ptr<peg::Ast> AST;
 
+// 文法
 const auto grammar = R"(
   # ルール
-  START              <- _ ADDITIVE
+  START              <- _ EXPRESSION
+  EXPRESSION         <- ASSIGNMENT / ADDITIVE
+  ASSIGNMENT         <- IDENTIFIER '=' _ EXPRESSION
   ADDITIVE           <- MULTITIVE (ADDITIVE_OPERATOR MULTITIVE)*
   MULTITIVE          <- PRIMARY (MULTITIVE_OPERATOR PRIMARY)*
-  PRIMARY            <- NUMBER / '(' _ ADDITIVE ')' _
+  PRIMARY            <- NUMBER / VARIABLE / '(' _ EXPRESSION ')' _
+  VARIABLE           <- IDENTIFIER
 
   # トークン
   ADDITIVE_OPERATOR  <- < [-+] > _
   MULTITIVE_OPERATOR <- < [/*] > _
   NUMBER             <- < '-'? [0-9]+ ('.' [0-9]+)? > _
+  IDENTIFIER         <- < [a-zA-Z][a-zA-Z0-9]* > _
 
   # 空白文字
   ~_                 <- [ \n\r\t]*
 )";
 
+// 変数表
+map<string, double> variables;
+
+// 評価器
 double eval(const AST& ast) {
   if (ast->name == "ADDITIVE" ||
       ast->name == "MULTITIVE") {
@@ -42,6 +51,27 @@ double eval(const AST& ast) {
       }
     }
     return result;
+  } else if (ast->name == "ASSIGNMENT") {
+    // 変数名の取得
+    auto sym = ast->nodes[0]->token;
+
+    // 値の取得
+    auto val = eval(ast->nodes[1]);
+
+    // 変数表に設定
+    variables[sym] = val;
+
+    return val;
+  } else if (ast->name == "VARIABLE") {
+    // 変数名の取得
+    auto sym = ast->nodes[0]->token;
+
+    // 変数が存在するかチェック
+    auto it = variables.find(sym);
+    if (it == variables.end()) {
+      throw std::runtime_error("undefined variable: '" + sym + "'");
+    }
+    return it->second;
   } else if (ast->name == "NUMBER") {
     // 数字文字列をdoubleに変換
     return stod(ast->token);
@@ -76,8 +106,8 @@ int main() {
     auto ret = parser.parse(line.c_str(), ast);
 
     if (ret) {
-      // 冗長なASTノードを除去
-      ast = peg::optimize_ast(ast);
+      // 冗長なASTノードを除去 ('VARIABLE'ルールを除く)
+      ast = peg::optimize_ast(ast, { "VARIABLE" });
 
       // ASTの表示
       cout << peg::ast_to_s(ast);
