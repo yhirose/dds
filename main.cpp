@@ -5,15 +5,24 @@ using namespace std;
 typedef shared_ptr<peg::Ast> AST;
 
 const auto grammar = R"(
-  START             <- _ ADDITIVE
-  ADDITIVE          <- NUMBER (ADDITIVE_OPERATOR NUMBER)*
-  ADDITIVE_OPERATOR <- < [-+] > _
-  NUMBER            <- < '-'? [0-9]+ ('.' [0-9]+)? > _
-  ~_                <- [ \n\r\t]*
+  # ルール
+  START              <- _ ADDITIVE
+  ADDITIVE           <- MULTITIVE (ADDITIVE_OPERATOR MULTITIVE)*
+  MULTITIVE          <- PRIMARY (MULTITIVE_OPERATOR PRIMARY)*
+  PRIMARY            <- NUMBER
+
+  # トークン
+  ADDITIVE_OPERATOR  <- < [-+] > _
+  MULTITIVE_OPERATOR <- < [/*] > _
+  NUMBER             <- < '-'? [0-9]+ ('.' [0-9]+)? > _
+
+  # 空白文字
+  ~_                 <- [ \n\r\t]*
 )";
 
 double eval(const AST& ast) {
-  if (ast->name == "ADDITIVE") {
+  if (ast->name == "ADDITIVE" ||
+      ast->name == "MULTITIVE") {
     // 二項演算子の計算
     auto result = eval(ast->nodes[0]);
     for (auto i = 1u; i < ast->nodes.size(); i += 2) {
@@ -22,6 +31,14 @@ double eval(const AST& ast) {
       switch (ope) {
         case '+': result += num; break;
         case '-': result -= num; break;
+        case '*': result *= num; break;
+        case '/':
+          // ゼロ除算チェック
+          if (num == 0) {
+            throw std::runtime_error("divide by 0 error");
+          }
+          result /= num;
+          break;
       }
     }
     return result;
@@ -62,11 +79,15 @@ int main() {
       cout << peg::ast_to_s(ast);
 
       // ASTの評価
-      auto result = eval(ast);
-      cout << result << endl;
+      try {
+        auto result = eval(ast);
+        cout << result << endl;
 
-      // 入力された行を履歴に追加
-      linenoise::AddHistory(line.c_str());
+        // 入力された行を履歴に追加
+        linenoise::AddHistory(line.c_str());
+      } catch (const std::runtime_error& e) {
+        cout << e.what() << endl;
+      }
     } else {
       cout << "syntax error..." << endl;
     }
