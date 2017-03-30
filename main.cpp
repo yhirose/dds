@@ -47,8 +47,9 @@ double eval(const AST& ast) {
     return stod(ast->token);
   }
 
-  assert(ast->nodes.size() == 1);
-  return eval(ast->nodes[0]);
+  // NOTREACHED
+  assert(false);
+  return 0;
 }
 
 int main() {
@@ -75,6 +76,9 @@ int main() {
     auto ret = parser.parse(line.c_str(), ast);
 
     if (ret) {
+      // 冗長なASTノードを除去
+      ast = peg::optimize_ast(ast);
+
       // ASTの表示
       cout << peg::ast_to_s(ast);
 
