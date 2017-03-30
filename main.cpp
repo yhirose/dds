@@ -5,7 +5,9 @@ using namespace std;
 typedef shared_ptr<peg::Ast> AST;
 
 const auto grammar = R"(
-  NUMBER <- '-'? [0-9]+ ('.' [0-9]+)?
+  ADDITIVE          <- NUMBER (ADDITIVE_OPERATOR NUMBER)*
+  ADDITIVE_OPERATOR <- [-+]
+  NUMBER            <- '-'? [0-9]+ ('.' [0-9]+)?
 )";
 
 int main() {
