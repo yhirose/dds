@@ -5,9 +5,11 @@ using namespace std;
 typedef shared_ptr<peg::Ast> AST;
 
 const auto grammar = R"(
+  START             <- _ ADDITIVE
   ADDITIVE          <- NUMBER (ADDITIVE_OPERATOR NUMBER)*
-  ADDITIVE_OPERATOR <- [-+]
-  NUMBER            <- '-'? [0-9]+ ('.' [0-9]+)?
+  ADDITIVE_OPERATOR <- < [-+] > _
+  NUMBER            <- < '-'? [0-9]+ ('.' [0-9]+)? > _
+  ~_                <- [ \n\r\t]*
 )";
 
 double eval(const AST& ast) {
@@ -27,7 +29,9 @@ double eval(const AST& ast) {
     // 数字文字列をdoubleに変換
     return stod(ast->token);
   }
-  return 0;
+
+  assert(ast->nodes.size() == 1);
+  return eval(ast->nodes[0]);
 }
 
 int main() {
